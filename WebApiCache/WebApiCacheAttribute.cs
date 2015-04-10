@@ -10,7 +10,7 @@ using System.Web.Http.Controllers;
 using System.Web.Http.Filters;
 
 namespace WebApiCache
-{
+{ 
     public class WebApiCacheAttribute : ActionFilterAttribute
     {
         private bool _isInitialized;
