@@ -95,8 +95,8 @@ namespace CacheWebApiTests
 
             // The first request to the other id should update the cace
             Browser browser1 = new Browser(uri2);
-            browser.MakeRequest(readController);
-            Assert.IsTrue(browser.ControllerExecuted);
+            browser1.MakeRequest(readController);
+            Assert.IsTrue(browser1.ControllerExecuted);
         }
     }
 }
