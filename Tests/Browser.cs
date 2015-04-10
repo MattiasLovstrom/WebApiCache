@@ -17,34 +17,49 @@ namespace CacheWebApiTests
 
         public Browser()
         {
-            HttpActionContext context = new HttpActionContext();
-            HttpControllerContext context2 = new HttpControllerContext();
-            HttpControllerDescriptor descriptor = new HttpControllerDescriptor {
+            HttpActionContext actionContext = new HttpActionContext();
+            HttpControllerContext controllerContext = new HttpControllerContext();
+            HttpControllerDescriptor descriptor = new HttpControllerDescriptor
+            {
                 ControllerType = typeof(TestController)
             };
-            context2.ControllerDescriptor = descriptor;
-            context2.Request = new HttpRequestMessage();
-            context.ControllerContext = context2;
-            context.Response = new HttpResponseMessage();
-            this.actionExecutingContext = context;
-            HttpActionExecutedContext context3 = new HttpActionExecutedContext {
-                ActionContext = new HttpActionContext(),
+            controllerContext.ControllerDescriptor = descriptor;
+            controllerContext.Request = new HttpRequestMessage();
+            actionContext.ControllerContext = controllerContext;
+            actionContext.Response = new HttpResponseMessage();
+            actionExecutingContext = actionContext;
+            actionExecutedContext = new HttpActionExecutedContext()
+            {
+                ActionContext = actionContext,
                 Response = new HttpResponseMessage()
             };
-            this.actionExecutedContext = context3;
         }
 
-        public Browser(EntityTagHeaderValue entityTagHeaderValue) : this()
+        public Browser(EntityTagHeaderValue entityTagHeaderValue)
+            : this()
         {
-            this.actionExecutingContext.Request.Headers.IfNoneMatch.Add(entityTagHeaderValue);
+            actionExecutingContext.Request.Headers.IfNoneMatch.Add(entityTagHeaderValue);
+        }
+
+        public Browser(Uri uri)
+            : this()
+        {
+            actionExecutingContext.Request.RequestUri = uri;
+        }
+
+        public void ExecuteControllerAction(WebApiCacheAttribute filter)
+        {
+            _controllerExecuted = true;
+            actionExecutingContext.Response = new HttpResponseMessage();
+            filter.OnActionExecuted(actionExecutedContext);
         }
 
         public void MakeRequest(WebApiCacheAttribute filter)
         {
-            filter.OnActionExecuting(this.actionExecutingContext);
-            if (this.actionExecutingContext.Response == null)
+            filter.OnActionExecuting(actionExecutingContext);
+            if (actionExecutingContext.Response == null)
             {
-                filter.OnActionExecuted(this.actionExecutedContext);
+                ExecuteControllerAction(filter);
             }
         }
 
@@ -64,11 +79,12 @@ namespace CacheWebApiTests
             }
         }
 
+        bool _controllerExecuted;
         public bool ControllerExecuted
         {
             get
             {
-                return (actionExecutingContext.Response == null);
+                return _controllerExecuted;
             }
         }
 
@@ -88,8 +104,8 @@ namespace CacheWebApiTests
         {
             get
             {
-                return actionExecutingContext.Response != null 
-                    ? actionExecutingContext.Response.Headers.ETag 
+                return actionExecutingContext.Response != null
+                    ? actionExecutingContext.Response.Headers.ETag
                     : actionExecutedContext.Response.Headers.ETag;
             }
         }
@@ -99,7 +115,7 @@ namespace CacheWebApiTests
             get
             {
                 return actionExecutingContext.Response != null
-                    ? actionExecutingContext.Response.StatusCode 
+                    ? actionExecutingContext.Response.StatusCode
                     : actionExecutedContext.Response.StatusCode;
             }
         }

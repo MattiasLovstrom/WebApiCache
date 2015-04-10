@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
 using System.Web.Http.Controllers;
 using System.Web.Http.Filters;
@@ -13,50 +14,39 @@ namespace WebApiCache
     public class WebApiCacheAttribute : ActionFilterAttribute
     {
         private bool _isInitialized;
+        //TODO Should utalize the cache
         private static IDictionary<Type, EntityTagHeaderValue> ETagStore = new Dictionary<Type, EntityTagHeaderValue>();
+        protected IDictionary<string, Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper>> RequestRules { get; set; }
+        protected IDictionary<string, Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper>> ResponseRules { get; set; }
 
-        private Func<HttpResponseMessage, HttpResponseMessage> ApplyETag()
+        public override void OnActionExecuting(HttpActionContext actionContext)
         {
-            return delegate (HttpResponseMessage response) {
-                response.Headers.ETag = ETagStore[DecalringType];
-                return response;
-            };
-        }
+            actionContext.Response = null;
+            if (!_isInitialized)
+            {
+                Initialize(actionContext);
+            }
 
-        private Func<HttpResponseMessage, HttpResponseMessage> ApplyETagForUser()
-        {
-            return delegate (HttpResponseMessage response) {
-                response.Headers.ETag = EtagForUser;
-                return response;
-            };
-        }
-
-        private static EntityTagHeaderValue CreateNewVersion()
-        {
-            Thread.Sleep(1);
-            return new EntityTagHeaderValue(string.Format("\"{0}\"", DateTime.Now.Ticks));
-        }
-
-        private Func<HttpRequestMessage, HttpResponseMessage> IfNoneMatch()
-        {
-            return delegate (HttpRequestMessage request) {
-                if ((request.Method == HttpMethod.Get) && request.Headers.IfNoneMatch.Contains(ETagStore[DecalringType]))
+            var request = new HttpRequestMessageWrapper(actionContext.Request, DecalringType, _varyByParam);
+            foreach (Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper> func in RequestRules.Values)
+            {
+                HttpResponseMessageWrapper message = func(request);
+                if (message != null)
                 {
-                    return request.CreateResponse(HttpStatusCode.NotModified);
+                    actionContext.Response = message.Response;
                 }
-                return null;
-            };
+            }
         }
 
-        private Func<HttpRequestMessage, HttpResponseMessage> IfNoneMatchForUser()
+        public override void OnActionExecuted(HttpActionExecutedContext actionExecutedContext)
         {
-            return delegate (HttpRequestMessage request) {
-                if ((request.Method == HttpMethod.Get) && request.Headers.IfNoneMatch.Contains(EtagForUser))
-                {
-                    return request.CreateResponse(HttpStatusCode.NotModified);
-                }
-                return null;
-            };
+            var response = new HttpResponseMessageWrapper(actionExecutedContext.Response, actionExecutedContext.Request.RequestUri, DecalringType, _varyByParam);
+            
+            foreach (Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper> func in ResponseRules.Values)
+            {
+                func(response);
+            }
+            base.OnActionExecuted(actionExecutedContext);
         }
 
         private void Initialize(HttpActionContext actionContext)
@@ -70,8 +60,8 @@ namespace WebApiCache
             {
                 ETagStore.Add(DecalringType, CreateNewVersion());
             }
-            RequestRules = new Dictionary<string, Func<HttpRequestMessage, HttpResponseMessage>>();
-            ResponseRules = new Dictionary<string, Func<HttpResponseMessage, HttpResponseMessage>>();
+            RequestRules = new Dictionary<string, Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper>>();
+            ResponseRules = new Dictionary<string, Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper>>();
             if (!Update)
             {
                 if (VaryByUser)
@@ -88,6 +78,7 @@ namespace WebApiCache
                 }
             }
             else
+            //Updates
             {
                 if (CacheOnServer)
                 {
@@ -110,9 +101,66 @@ namespace WebApiCache
             ResponseRules.Add("SetPublicCacheHeaders", SetPublicCacheHeaders());
         }
 
-        private Func<HttpResponseMessage, HttpResponseMessage> InvalidateETag()
+
+        private Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper> ApplyETag()
         {
-            return delegate (HttpResponseMessage response) {
+            return delegate (HttpResponseMessageWrapper response) {
+                response.Response.Headers.ETag = ETagStore[DecalringType];
+                return response;
+            };
+        }
+
+        private Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper> ApplyETagForUser()
+        {
+            return delegate (HttpResponseMessageWrapper response) {
+                response.Response.Headers.ETag = EtagForUser;
+                return response;
+            };
+        }
+
+        private static EntityTagHeaderValue CreateNewVersion()
+        {
+            Thread.Sleep(1);
+            return new EntityTagHeaderValue(string.Format("\"{0}\"", DateTime.Now.Ticks));
+        }
+
+        private Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper> IfNoneMatch()
+        {
+            return delegate (HttpRequestMessageWrapper request) {
+                if ((request.Request.Method == HttpMethod.Get) 
+                    && request.Request.Headers.IfNoneMatch.Contains(ETagStore[DecalringType]))
+                {
+                    return new HttpResponseMessageWrapper(
+                        request.Request.CreateResponse(HttpStatusCode.NotModified),
+                        request.Request.RequestUri,
+                        DecalringType,
+                        _varyByParam);
+                }
+                return null;
+            };
+        }
+
+        private Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper> IfNoneMatchForUser()
+        {
+            return delegate (HttpRequestMessageWrapper request) {
+                if ((request.Request.Method == HttpMethod.Get) 
+                    && request.Request.Headers.IfNoneMatch.Contains(EtagForUser))
+                {
+                    return new HttpResponseMessageWrapper(
+                        request.Request.CreateResponse(HttpStatusCode.NotModified),
+                        request.Request.RequestUri,
+                        DecalringType,
+                        _varyByParam);
+                }
+                return null;
+            };
+        }
+
+        
+
+        private Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper> InvalidateETag()
+        {
+            return delegate (HttpResponseMessageWrapper response) {
                 InvalidateETag(DecalringType);
                 return response;
             };
@@ -123,64 +171,41 @@ namespace WebApiCache
             ETagStore[decalringType] = CreateNewVersion();
         }
 
-        private Func<HttpRequestMessage, HttpResponseMessage> InvalidateOutputCache()
+        private Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper> InvalidateOutputCache()
         {
-            return delegate (HttpRequestMessage response) {
-                OutputCacheHandler.Invalidate(DecalringType);
+            return delegate (HttpRequestMessageWrapper request) 
+            {
+                OutputCacheHandler.Invalidate(request.CurrentCacheKey);
                 return null;
             };
         }
 
-        public override void OnActionExecuted(HttpActionExecutedContext actionExecutedContext)
-        {
-            foreach (Func<HttpResponseMessage, HttpResponseMessage> func in ResponseRules.Values)
-            {
-                func(actionExecutedContext.Response);
-            }
-            base.OnActionExecuted(actionExecutedContext);
-        }
+        
 
-        public override void OnActionExecuting(HttpActionContext actionContext)
+        private Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper> SetPublicCacheHeaders()
         {
-            actionContext.Response = null;
-            if (!_isInitialized)
-            {
-                Initialize(actionContext);
-            }
-            foreach (Func<HttpRequestMessage, HttpResponseMessage> func in RequestRules.Values)
-            {
-                HttpResponseMessage message = func(actionContext.Request);
-                if (message != null)
-                {
-                    actionContext.Response = message;
-                }
-            }
-        }
-
-        private Func<HttpResponseMessage, HttpResponseMessage> SetPublicCacheHeaders()
-        {
-            return delegate (HttpResponseMessage response) {
+            return delegate (HttpResponseMessageWrapper response) {
                 CacheControlHeaderValue value2 = new CacheControlHeaderValue {
                     MaxAge = new TimeSpan?(TimeSpan.Zero),
                     Public = true,
                     MustRevalidate = true
                 };
-                response.Headers.CacheControl = value2;
+                response.Response.Headers.CacheControl = value2;
                 return response;
             };
         }
 
-        private Func<HttpResponseMessage, HttpResponseMessage> StoreInOutputCache()
+        private Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper> StoreInOutputCache()
         {
-            return delegate (HttpResponseMessage response) {
-                OutputCacheHandler.Set(DecalringType, response);
+            return delegate (HttpResponseMessageWrapper response) {
+                OutputCacheHandler.Set(response.CurrentCacheKey, response);
                 return response;
             };
         }
 
-        private Func<HttpRequestMessage, HttpResponseMessage> TryDeliverFromOutputCache()
+        private Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper> TryDeliverFromOutputCache()
         {
-            return request => OutputCacheHandler.Get(DecalringType);
+            return request => OutputCacheHandler.Get(request.CurrentCacheKey);
         }
 
         public bool CacheOnServer { get; set; }
@@ -196,15 +221,22 @@ namespace WebApiCache
             }
         }
 
+          
+
         public virtual Type Key { get; set; }
 
-        protected IDictionary<string, Func<HttpRequestMessage, HttpResponseMessage>> RequestRules { get; set; }
-
-        protected IDictionary<string, Func<HttpResponseMessage, HttpResponseMessage>> ResponseRules { get; set; }
-
+        
         public virtual bool Update { get; set; }
 
         public bool VaryByUser { get; set; }
+
+        private List<String> _varyByParam;
+        public string VarByParam { 
+            set 
+            {
+                _varyByParam = new List<string>(value.Split(new[] { ',' }));
+            }
+        }
     }
 }
 

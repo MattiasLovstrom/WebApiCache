@@ -9,47 +9,42 @@ namespace WebApiCache
         private static MemoryCache _cache = MemoryCache.Default;
         public static readonly TimeSpan MaximunUpdateTime = TimeSpan.FromMinutes(10.0);
 
-        public static HttpResponseMessage Get(Type declaringType)
+        public static HttpResponseMessageWrapper Get(string cacheKey)
         {
-            CachedResponse response = _cache.Get(GetCacheKey(declaringType), null) as CachedResponse;
+            CachedResponse response = _cache.Get(cacheKey, null) as CachedResponse;
             if (response == null)
             {
                 return null;
             }
             if (response.Invalidated != null
-                && DateTime.UtcNow.Add(MaximunUpdateTime) > response.Invalidated.Value)
+                && response.Invalidated.Value.Add(MaximunUpdateTime) < DateTime.UtcNow)
             {
-                Remove(declaringType);
+                Remove(cacheKey);
                 return null;
             }
             return response.Response;
         }
 
-        public static string GetCacheKey(Type type)
+        public static void Invalidate(string cacheKey)
         {
-            return ("WebAPiCache" + type.FullName);
-        }
-
-        public static void Invalidate(Type declaringType)
-        {
-            CachedResponse response = _cache.Get(GetCacheKey(declaringType), null) as CachedResponse;
+            CachedResponse response = _cache.Get(cacheKey, null) as CachedResponse;
             if (response != null)
             {
                 response.Invalidated = new DateTime?(DateTime.UtcNow);
             }
         }
 
-        public static void Remove(Type declaringType)
+        public static void Remove(string cacheKey)
         {
-            _cache.Remove(GetCacheKey(declaringType), null);
+            _cache.Remove(cacheKey, null);
         }
 
-        public static void Set(Type declaringType, HttpResponseMessage response)
+        public static void Set(string cacheKey, HttpResponseMessageWrapper response)
         {
             CacheItemPolicy policy = new CacheItemPolicy {
                 SlidingExpiration = TimeSpan.FromDays(1.0)
             };
-            _cache.Set(GetCacheKey(declaringType), new CachedResponse(response), policy, null);
+            _cache.Set(cacheKey, new CachedResponse(response), policy, null);
         }
     }
 }

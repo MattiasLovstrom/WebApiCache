@@ -6,14 +6,14 @@ namespace WebApiCache
 {
     public class CachedResponse
     {
-        public CachedResponse(HttpResponseMessage response)
+        public CachedResponse(HttpResponseMessageWrapper response)
         {
             Response = response;
         }
 
         public DateTime? Invalidated { get; set; }
 
-        public HttpResponseMessage Response { get; set; }
+        public HttpResponseMessageWrapper Response { get; set; }
     }
 }
 

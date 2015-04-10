@@ -4,10 +4,11 @@ namespace WebApiCache
 {
     public class WebApiCacheManager
     {
-        public static void Invalidate(Type type)
+        public static void Invalidate(Type cacheKey)
         {
-            OutputCacheHandler.Invalidate(type);
-            WebApiCacheAttribute.InvalidateETag(type);
+            //TODO  Fix
+            //OutputCacheHandler.Invalidate(cacheKey);
+            //WebApiCacheAttribute.InvalidateETag(cacheKey);
         }
     }
 }
