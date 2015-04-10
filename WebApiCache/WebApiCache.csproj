@@ -56,7 +56,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CachedResponse.cs" />
     <Compile Include="HttpRequestMessageWrapper.cs" />
     <Compile Include="HttpResponseMessageWrapper.cs" />
     <Compile Include="ICacheVersion.cs" />

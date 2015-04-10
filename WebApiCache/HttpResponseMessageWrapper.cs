@@ -12,8 +12,6 @@ namespace WebApiCache
         private HttpResponseMessage _httpResponseMessage;
         private Type _decalringType;
         private List<string> _varyByParam;
-        private HttpResponseMessage httpResponseMessage;
-
         
         public HttpResponseMessageWrapper(
             HttpResponseMessage httpResponseMessage,
@@ -34,5 +32,7 @@ namespace WebApiCache
                 return _httpResponseMessage;
             } 
         }
+
+        public DateTime? Invalidated { get; set; }
     }
 }

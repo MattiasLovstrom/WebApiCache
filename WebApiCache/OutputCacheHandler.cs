@@ -11,7 +11,7 @@ namespace WebApiCache
 
         public static HttpResponseMessageWrapper Get(string cacheKey)
         {
-            CachedResponse response = _cache.Get(cacheKey, null) as CachedResponse;
+            HttpResponseMessageWrapper response = _cache.Get(cacheKey, null) as HttpResponseMessageWrapper;
             if (response == null)
             {
                 return null;
@@ -22,12 +22,12 @@ namespace WebApiCache
                 Remove(cacheKey);
                 return null;
             }
-            return response.Response;
+            return response;
         }
 
         public static void Invalidate(string cacheKey)
         {
-            CachedResponse response = _cache.Get(cacheKey, null) as CachedResponse;
+            HttpResponseMessageWrapper response = _cache.Get(cacheKey, null) as HttpResponseMessageWrapper;
             if (response != null)
             {
                 response.Invalidated = new DateTime?(DateTime.UtcNow);
@@ -44,7 +44,7 @@ namespace WebApiCache
             CacheItemPolicy policy = new CacheItemPolicy {
                 SlidingExpiration = TimeSpan.FromDays(1.0)
             };
-            _cache.Set(cacheKey, new CachedResponse(response), policy, null);
+            _cache.Set(cacheKey, response, policy, null);
         }
     }
 }
