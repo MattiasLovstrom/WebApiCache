@@ -18,6 +18,48 @@ namespace CacheWebApiTests
         }
 
         [TestMethod]
+        public void ETagCacheVaryByPath()
+        {
+            // /api/bubble/00000000-0000-0000-0000-000000000000/messages/
+            // /api/bubble/00000000-0000-0000-0000-000000000001/messages/
+
+            WebApiCacheAttribute readController = new WebApiCacheAttribute
+            {
+                VaryByPath = true
+            };
+            WebApiCacheAttribute updateController = new WebApiCacheAttribute
+            {
+                Update = true,
+                VaryByPath = true
+            };
+
+            Uri uri1 = new Uri("http://epiwiki.se/api/bubble/00000000-0000-0000-0000-000000000000/messages/");
+            Uri uri2 = new Uri("http://epiwiki.se/api/bubble/00000000-0000-0000-0000-000000000001/messages/");
+
+            // first request should load the cache 
+            var browser1 = new Browser(uri1);
+            browser1.MakeRequest(readController);
+            // The second request should read from cace
+            Browser browser2 = new Browser(browser1.ETag)
+            {
+                Url = uri1
+            };
+            browser2.MakeRequest(readController);
+            Assert.IsFalse(browser2.ControllerExecuted);
+
+            //Another url should load the cache 
+            Browser browser3 = new Browser(browser1.ETag)
+            {
+                Url = uri2
+            };
+            browser2.MakeRequest(readController);
+            Assert.IsTrue(browser2.ControllerExecuted);
+
+            //browser1.MakeRequest(readController);
+            //Assert.IsTrue(browser1.ControllerExecuted);
+        }
+
+        [TestMethod]
         public void ETagDeclarentType()
         {
             WebApiCacheAttribute filter = new WebApiCacheAttribute();
@@ -83,20 +125,24 @@ namespace CacheWebApiTests
             WebApiCacheAttribute filter = new WebApiCacheAttribute {
                 VaryByUser = true
             };
-            WebApiCacheAttribute attribute2 = new WebApiCacheAttribute {
+            WebApiCacheAttribute updateFilter = new WebApiCacheAttribute {
                 Update = true
             };
             IPrincipal principal = new GenericPrincipal(new GenericIdentity("user1"), new string[] { "role1", "role2" });
             IPrincipal principal2 = new GenericPrincipal(new GenericIdentity("user2"), new string[] { "role1", "role3" });
             Thread.CurrentPrincipal = principal;
             Browser browser = new Browser();
+            //First request update cace for principal1
             browser.MakeRequest(filter);
             Thread.CurrentPrincipal = principal2;
             Browser browser2 = new Browser();
+            //First request update cace for principal2
             browser2.MakeRequest(filter);
             EntityTagHeaderValue eTag = browser2.ETag;
             Assert.AreNotEqual<EntityTagHeaderValue>(browser.ETag, browser2.ETag);
-            browser2.MakeRequest(attribute2);
+            //Make Update should invalidate for all since it not marked VaryByUser
+            browser2.MakeRequest(updateFilter);
+            //Make normal request 
             browser2.MakeRequest(filter);
             Assert.AreNotEqual<EntityTagHeaderValue>(eTag, browser2.ETag);
         }

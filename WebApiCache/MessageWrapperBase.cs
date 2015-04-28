@@ -25,37 +25,14 @@ namespace WebApiCache
         {
             get
             {
-                if (_cacheKey == null)
-                {
-                    _cacheKey = GetCacheKey(
-                        _uri,
-                        _decalringType,
-                        _varyByParam);
-                }
-
                 return _cacheKey;
+            }
+            set
+            {
+                _cacheKey = value;
             }
         }
 
-        protected string GetCacheKey(Uri uri, Type DecalringType, List<string> _varyByParam)
-        {
-            var ret = "WebAPiCache" + DecalringType.FullName;
-            if (_varyByParam == null)
-            {
-                return ret;
-            }
-
-            var customCacheKey = new StringBuilder(ret);
-            var parameters = uri.ParseQueryString();
-            foreach (var param in _varyByParam)
-            {
-                if (parameters[param] != null)
-                {
-                    customCacheKey.AppendFormat("{0}={1}", param, parameters[param]);
-                }
-            }
-
-            return (customCacheKey.ToString());
-        }     
+             
     }
 }

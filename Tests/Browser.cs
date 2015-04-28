@@ -44,13 +44,16 @@ namespace CacheWebApiTests
         public Browser(Uri uri)
             : this()
         {
-            actionExecutingContext.Request.RequestUri = uri;
+             Url = uri;
         }
+
+        public Uri Url { get { return actionExecutingContext.Request.RequestUri; } set { actionExecutingContext.Request.RequestUri = value; } }
 
         public void ExecuteControllerAction(WebApiCacheAttribute filter)
         {
             _controllerExecuted = true;
-            actionExecutingContext.Response = new HttpResponseMessage();
+            actionExecutedContext.Response = new HttpResponseMessage();
+            actionExecutedContext.Response.RequestMessage = actionExecutingContext.Request;
             filter.OnActionExecuted(actionExecutedContext);
         }
 
