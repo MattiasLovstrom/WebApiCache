@@ -11,7 +11,7 @@ namespace CacheWebApiTests
         [TestMethod]
         public void OutputcacheExternalInvalidation()
         {
-            WebApiCacheAttribute filter = new WebApiCacheAttribute {
+            CacheAttribute filter = new CacheAttribute {
                 DecalringType = typeof(ExternalInvalidatedController)
             };
             Browser browser = new Browser();

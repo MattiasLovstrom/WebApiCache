@@ -23,11 +23,11 @@ namespace CacheWebApiTests
             // /api/bubble/00000000-0000-0000-0000-000000000000/messages/
             // /api/bubble/00000000-0000-0000-0000-000000000001/messages/
 
-            WebApiCacheAttribute readController = new WebApiCacheAttribute
+            CacheAttribute readController = new CacheAttribute
             {
                 VaryByPath = true
             };
-            WebApiCacheAttribute updateController = new WebApiCacheAttribute
+            CacheAttribute updateController = new CacheAttribute
             {
                 Update = true,
                 VaryByPath = true
@@ -62,8 +62,8 @@ namespace CacheWebApiTests
         [TestMethod]
         public void ETagDeclarentType()
         {
-            WebApiCacheAttribute filter = new WebApiCacheAttribute();
-            WebApiCacheAttribute attribute2 = new WebApiCacheAttribute 
+            CacheAttribute filter = new CacheAttribute();
+            CacheAttribute attribute2 = new CacheAttribute 
             {
                 DecalringType = typeof(TestController)
             };
@@ -81,7 +81,7 @@ namespace CacheWebApiTests
         [TestMethod]
         public void ETagFullRequest()
         {
-            WebApiCacheAttribute filter = new WebApiCacheAttribute();
+            CacheAttribute filter = new CacheAttribute();
             Browser browser = new Browser();
             browser.MakeRequest(filter);
             Assert.IsTrue(!string.IsNullOrEmpty(browser.ActionExecutedContext.Response.Headers.ETag.Tag));
@@ -94,7 +94,7 @@ namespace CacheWebApiTests
         [TestMethod]
         public void ETagNotUpdate()
         {
-            WebApiCacheAttribute filter = new WebApiCacheAttribute();
+            CacheAttribute filter = new CacheAttribute();
             Browser browser = new Browser();
             browser.MakeRequest(filter);
             Assert.IsTrue(browser.ETag != null);
@@ -106,7 +106,7 @@ namespace CacheWebApiTests
         [TestMethod]
         public void ETagUpdate()
         {
-            WebApiCacheAttribute filter = new WebApiCacheAttribute {
+            CacheAttribute filter = new CacheAttribute {
                 Update = true
             };
             Browser browser = new Browser();
@@ -122,10 +122,10 @@ namespace CacheWebApiTests
         [TestMethod]
         public void ETagUpdateForUser()
         {
-            WebApiCacheAttribute filter = new WebApiCacheAttribute {
+            CacheAttribute filter = new CacheAttribute {
                 VaryByUser = true
             };
-            WebApiCacheAttribute updateFilter = new WebApiCacheAttribute {
+            CacheAttribute updateFilter = new CacheAttribute {
                 VaryByUser = true,
                 Update = true
             };

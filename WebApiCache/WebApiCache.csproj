@@ -62,7 +62,7 @@
     <Compile Include="MessageWrapperBase.cs" />
     <Compile Include="OutputCacheHandler.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="WebApiCacheAttribute.cs" />
+    <Compile Include="CacheAttribute.cs" />
     <Compile Include="WebApiCacheManager.cs" />
   </ItemGroup>
   <ItemGroup>

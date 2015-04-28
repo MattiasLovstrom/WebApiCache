@@ -11,7 +11,7 @@ using System.Web.Http.Filters;
 
 namespace WebApiCache
 {
-    public class WebApiCacheAttribute : ActionFilterAttribute
+    public class CacheAttribute : ActionFilterAttribute
     {
         private bool _isInitialized;
         //TODO Should utalize the cache
