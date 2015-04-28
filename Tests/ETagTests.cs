@@ -52,8 +52,8 @@ namespace CacheWebApiTests
             {
                 Url = uri2
             };
-            browser2.MakeRequest(readController);
-            Assert.IsTrue(browser2.ControllerExecuted);
+            browser3.MakeRequest(readController);
+            Assert.IsTrue(browser3.ControllerExecuted);
 
             //browser1.MakeRequest(readController);
             //Assert.IsTrue(browser1.ControllerExecuted);
@@ -126,6 +126,7 @@ namespace CacheWebApiTests
                 VaryByUser = true
             };
             WebApiCacheAttribute updateFilter = new WebApiCacheAttribute {
+                VaryByUser = true,
                 Update = true
             };
             IPrincipal principal = new GenericPrincipal(new GenericIdentity("user1"), new string[] { "role1", "role2" });
@@ -136,7 +137,7 @@ namespace CacheWebApiTests
             browser.MakeRequest(filter);
             Thread.CurrentPrincipal = principal2;
             Browser browser2 = new Browser();
-            //First request update cace for principal2
+            //First request update cache for principal2
             browser2.MakeRequest(filter);
             EntityTagHeaderValue eTag = browser2.ETag;
             Assert.AreNotEqual<EntityTagHeaderValue>(browser.ETag, browser2.ETag);
