@@ -18,7 +18,7 @@ namespace CacheWebApiTests
             browser.MakeRequest(filter);
             Assert.IsTrue(!string.IsNullOrEmpty(browser.ActionExecutedContext.Response.Headers.ETag.Tag));
             Assert.IsTrue(browser.StatusCode == HttpStatusCode.OK);
-            WebApiCacheManager.Invalidate(typeof(ExternalInvalidatedController));
+            OutputCacheHandler.Invalidate(new CacheKey(typeof(ExternalInvalidatedController)));
             browser = new Browser(browser.ETag);
             browser.MakeRequest(filter);
             Assert.IsTrue(browser.ControllerExecuted);

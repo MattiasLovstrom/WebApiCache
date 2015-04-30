@@ -1,17 +1,22 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Runtime.Caching;
+using System.Threading;
 
 namespace WebApiCache
 {
     public class OutputCacheHandler
     {
-        private static MemoryCache _cache = MemoryCache.Default;
+        private static IDictionary<string, EntityTagHeaderValue> ETagStore = new Dictionary<string, EntityTagHeaderValue>();
         public static readonly TimeSpan MaximunUpdateTime = TimeSpan.FromMinutes(10.0);
 
-        public static HttpResponseMessageWrapper Get(string cacheKey)
+
+
+        public static HttpResponseMessageWrapper Get(CacheKey cacheKey)
         {
-            HttpResponseMessageWrapper response = _cache.Get(cacheKey, null) as HttpResponseMessageWrapper;
+            HttpResponseMessageWrapper response = SynchronizedCacheManager.Instance.Get(cacheKey) as HttpResponseMessageWrapper;
             if (response == null)
             {
                 return null;
@@ -19,32 +24,58 @@ namespace WebApiCache
             if (response.Invalidated != null
                 && response.Invalidated.Value.Add(MaximunUpdateTime) < DateTime.UtcNow)
             {
-                Remove(cacheKey);
+                SynchronizedCacheManager.Instance.Remove(cacheKey);
                 return null;
             }
             return response;
         }
 
-        public static void Invalidate(string cacheKey)
+        public static void InvalidateOutputCache(CacheKey cacheKey)
         {
-            HttpResponseMessageWrapper response = _cache.Get(cacheKey, null) as HttpResponseMessageWrapper;
+            HttpResponseMessageWrapper response = SynchronizedCacheManager.Instance.Get(cacheKey) as HttpResponseMessageWrapper;
             if (response != null)
             {
                 response.Invalidated = new DateTime?(DateTime.UtcNow);
             }
         }
 
-        public static void Remove(string cacheKey)
+        public static void InvalidateETag(CacheKey cacheKey)
         {
-            _cache.Remove(cacheKey, null);
+            OutputCacheHandler.ETagStore[cacheKey.FullCacheKey] = CreateNewVersion();
         }
 
-        public static void Set(string cacheKey, HttpResponseMessageWrapper response)
+        private static EntityTagHeaderValue CreateNewVersion()
         {
-            CacheItemPolicy policy = new CacheItemPolicy {
-                SlidingExpiration = TimeSpan.FromDays(1.0)
-            };
-            _cache.Set(cacheKey, response, policy, null);
+            Thread.Sleep(1);
+            return new EntityTagHeaderValue(string.Format("\"{0}\"", DateTime.Now.Ticks));
+        }
+
+        
+        public static EntityTagHeaderValue GetOrCreateETag(CacheKey cacheKey)
+        {
+            var key = cacheKey.FullCacheKey;
+            if (!ETagStore.ContainsKey(key))
+            {
+                OutputCacheHandler.ETagStore[key] = CreateNewVersion();
+            }
+            return ETagStore[key];
+        }
+
+        internal static EntityTagHeaderValue ETag(CacheKey cacheKey)
+        {
+            var key = cacheKey.FullCacheKey;
+            if (ETagStore.ContainsKey(key))
+            {
+                return ETagStore[key];
+            }
+
+            return null;
+        }
+
+        public static void Invalidate(CacheKey cacheKey)
+        {
+            InvalidateOutputCache(cacheKey);
+            InvalidateETag(cacheKey);
         }
     }
 }

@@ -14,9 +14,37 @@ namespace CacheWebApiTests
         [TestMethod]
         public void ETagCacheVaryByParams()
         {
-            throw new NotImplementedException();
-        }
+            ServerCache.ClearCache();
 
+            WebApiCacheAttribute readController = new WebApiCacheAttribute
+            {
+                VarByParam="id,lang"
+            };
+            WebApiCacheAttribute updateController = new WebApiCacheAttribute
+            {
+                Update = true,
+                VarByParam="id,lang"
+            };
+
+            Uri uri1 = new Uri("http://epiwiki.se/?id=1&lang=sv");
+            Uri uri2 = new Uri("http://epiwiki.se/?id=2&lang=sv");
+            Uri uri3 = new Uri("http://epiwiki.se/?id=2&lang=sv&notincluded=true");
+           
+            // first url should get a etag
+            var browser1 = new Browser(uri1);
+            browser1.MakeRequest(readController);
+
+            // second url should get another etag
+            var browser2 = new Browser(uri2);
+            browser2.MakeRequest(readController);
+            Assert.AreNotEqual(browser1.ETag, browser2.ETag);
+
+            // second url should get another etag
+            var browser3 = new Browser(uri3);
+            browser3.MakeRequest(readController);
+            Assert.AreEqual(browser2.ETag, browser3.ETag);
+        }
+        
         [TestMethod]
         public void ETagCacheVaryByPath()
         {
