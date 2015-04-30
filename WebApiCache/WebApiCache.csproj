@@ -57,6 +57,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CacheKey.cs" />
+    <Compile Include="ETagStore.cs" />
     <Compile Include="HttpRequestMessageWrapper.cs" />
     <Compile Include="HttpResponseMessageWrapper.cs" />
     <Compile Include="ICacheVersion.cs" />

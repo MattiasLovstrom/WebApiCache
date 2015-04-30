@@ -197,7 +197,7 @@ namespace WebApiCache
         {
             return delegate(HttpResponseMessageWrapper response)
             {
-                response.Response.Headers.ETag = OutputCacheHandler.GetOrCreateETag(response.CurrentCacheKey);
+                response.Response.Headers.ETag = ETagStore.GetOrCreateETag(response.CurrentCacheKey);
                 return response;
             };
         }
@@ -211,15 +211,14 @@ namespace WebApiCache
             {
                 if (request.Request.Method == HttpMethod.Get)
                 {
-                    var etag = OutputCacheHandler.ETag(request.CurrentCacheKey);
-                    if (etag != null && request.Request.Headers.IfNoneMatch.Contains(etag))
-                {
-                    return new HttpResponseMessageWrapper(
-                        request.Request.CreateResponse(HttpStatusCode.NotModified),
-                        request.Request.RequestUri,
-                        DecalringType,
-                        _varyByParam);
-                }
+                    if (request.Request.Headers.IfNoneMatch.Contains(ETagStore.GetOrCreateETag(request.CurrentCacheKey)))
+                    {
+                        return new HttpResponseMessageWrapper(
+                            request.Request.CreateResponse(HttpStatusCode.NotModified),
+                            request.Request.RequestUri,
+                            DecalringType,
+                            _varyByParam);
+                    }
                 }
                 return null;
             };
@@ -229,7 +228,7 @@ namespace WebApiCache
         {
             return delegate(HttpResponseMessageWrapper response)
             {
-                OutputCacheHandler.InvalidateETag(response.CurrentCacheKey);
+                ETagStore.Invalidate(response.CurrentCacheKey);
                 return response;
             };
         }
@@ -296,8 +295,6 @@ namespace WebApiCache
                 _varyByParam = new List<string>(value.Split(new[] { ',' }));
             }
         }
-
-        public bool VarByPath { get; set; }
 
         public bool VaryByPath { get; set; }
     }
