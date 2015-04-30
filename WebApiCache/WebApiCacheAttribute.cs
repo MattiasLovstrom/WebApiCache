@@ -238,7 +238,7 @@ namespace WebApiCache
         {
             return delegate(HttpRequestMessageWrapper request)
             {
-                OutputCacheHandler.InvalidateOutputCache(request.CurrentCacheKey);
+                SynchronizedCacheManager.Instance.Invalidate(request.CurrentCacheKey);
                 return null;
             };
         }
@@ -271,7 +271,7 @@ namespace WebApiCache
 
         private Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper> TryDeliverFromOutputCache()
         {
-            return request => OutputCacheHandler.Get(request.CurrentCacheKey);
+            return request => SynchronizedCacheManager.Instance.Get(request.CurrentCacheKey) as HttpResponseMessageWrapper;
         }
 
         public bool CacheOnServer { get; set; }

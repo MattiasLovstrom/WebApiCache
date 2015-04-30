@@ -62,7 +62,6 @@
     <Compile Include="HttpResponseMessageWrapper.cs" />
     <Compile Include="ICacheVersion.cs" />
     <Compile Include="MessageWrapperBase.cs" />
-    <Compile Include="OutputCacheHandler.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="WebApiCacheAttribute.cs" />
     <Compile Include="SyncronizedCacheManager.cs" />
