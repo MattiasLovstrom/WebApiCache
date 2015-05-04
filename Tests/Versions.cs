@@ -11,7 +11,7 @@ namespace CacheWebApiTests
         [TestMethod]
         public void ETagInvalidateArea()
         {
-            WebApiCacheAttribute filter = new WebApiCacheAttribute {
+            CacheAttribute filter = new CacheAttribute {
                 DecalringType = typeof(ExternalInvalidatedController),
                 VaryByPath = true
             };
@@ -29,7 +29,7 @@ namespace CacheWebApiTests
         [TestMethod]
         public void OutputCacheRemoveArea()
         {
-            WebApiCacheAttribute filter = new WebApiCacheAttribute
+            CacheAttribute filter = new CacheAttribute
             {
                 DecalringType = typeof(ExternalInvalidatedController),
                 VaryByPath = true,

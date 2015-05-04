@@ -49,7 +49,7 @@ namespace CacheWebApiTests
 
         public Uri Url { get { return actionExecutingContext.Request.RequestUri; } set { actionExecutingContext.Request.RequestUri = value; } }
 
-        public void ExecuteControllerAction(WebApiCacheAttribute filter)
+        public void ExecuteControllerAction(CacheAttribute filter)
         {
             _controllerExecuted = true;
             actionExecutedContext.Response = new HttpResponseMessage();
@@ -57,7 +57,7 @@ namespace CacheWebApiTests
             filter.OnActionExecuted(actionExecutedContext);
         }
 
-        public void MakeRequest(WebApiCacheAttribute filter)
+        public void MakeRequest(CacheAttribute filter)
         {
             filter.OnActionExecuting(actionExecutingContext);
             if (actionExecutingContext.Response == null)

@@ -16,10 +16,10 @@ namespace CacheWebApiTests
         {
             ClearCache();
 
-            WebApiCacheAttribute readController = new WebApiCacheAttribute {
+            CacheAttribute readController = new CacheAttribute {
                 CacheOnServer = true
             };
-            WebApiCacheAttribute updateController = new WebApiCacheAttribute {
+            CacheAttribute updateController = new CacheAttribute {
                 CacheOnServer = true,
                 Update = true
             };
@@ -47,7 +47,7 @@ namespace CacheWebApiTests
         {
             ClearCache();
             
-            WebApiCacheAttribute filter = new WebApiCacheAttribute {
+            CacheAttribute filter = new CacheAttribute {
                 CacheOnServer = true
             };
             Browser browser = new Browser();
@@ -70,12 +70,12 @@ namespace CacheWebApiTests
         {
             ClearCache();
 
-            WebApiCacheAttribute readController = new WebApiCacheAttribute
+            CacheAttribute readController = new CacheAttribute
             {
                 CacheOnServer = true,
                 VarByParam="id,lang"
             };
-            WebApiCacheAttribute updateController = new WebApiCacheAttribute
+            CacheAttribute updateController = new CacheAttribute
             {
                 CacheOnServer = true,
                 Update = true,
