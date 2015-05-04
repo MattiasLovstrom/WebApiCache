@@ -17,7 +17,7 @@ namespace WebApiCache
         {
             Instance = new SynchronizedCacheManager();
         }
-        
+
         public virtual object Get(CacheKey key)
         {
             if (_invalidItems.ContainsKey(key.Area))
@@ -28,18 +28,19 @@ namespace WebApiCache
                     if (invalidatedArea != null
                         && invalidatedArea.Value.Add(MaximunUpdateTime) < DateTime.UtcNow)
                     {
-                        _invalidItems.Remove(key.Area); 
+                        _invalidItems.Remove(key.Area);
                         Remove(key);
                         return null;
                     }
-                } else
+                }
+                else
                 {
-                    var invalidatedItemCollection =  _invalidItems[key.Area] as ConcurrentDictionary<string, DateTime>; 
-                    if (invalidatedItemCollection != null 
+                    var invalidatedItemCollection = _invalidItems[key.Area] as ConcurrentDictionary<string, DateTime>;
+                    if (invalidatedItemCollection != null
                         && invalidatedItemCollection.ContainsKey(key.Key)
-                        && invalidatedItemCollection[key.Key].Add(MaximunUpdateTime)< DateTime.UtcNow)
+                        && invalidatedItemCollection[key.Key].Add(MaximunUpdateTime) < DateTime.UtcNow)
                     {
-                        DateTime tmp; 
+                        DateTime tmp;
                         invalidatedItemCollection.TryRemove(key.Key, out tmp);
                         if (invalidatedItemCollection.Count == 0)
                         {
@@ -56,7 +57,7 @@ namespace WebApiCache
         //TODO Remove must remove all children if its an area
         public virtual void Remove(CacheKey key)
         {
-            Release(key);
+            ReleaseInvalidation(key);
             _cache.Remove(key.FullCacheKey, null);
         }
 
@@ -73,13 +74,13 @@ namespace WebApiCache
             }
         }
 
-        public void Release(CacheKey key)
+        public void ReleaseInvalidation(CacheKey key)
         {
             if (key.IsArea)
             {
                 _invalidItems.Remove(key.Area);
             }
-            else 
+            else
             {
                 if (_invalidItems.ContainsKey(key.Area))
                 {
@@ -88,15 +89,30 @@ namespace WebApiCache
             }
         }
 
-
-
         public virtual void Set(CacheKey cacheKey, object value)
         {
+            
+
             CacheItemPolicy policy = new CacheItemPolicy
             {
                 SlidingExpiration = TimeSpan.FromDays(365.0)
             };
-            Release(cacheKey);
+
+            if (!cacheKey.IsArea)
+            {
+                var areaCacheItem = _cache.Get(cacheKey.Area);
+                if (areaCacheItem == null)
+                {
+                    _cache.Set(cacheKey.Area, new Object(), new CacheItemPolicy()
+                    {
+                        SlidingExpiration = TimeSpan.FromDays(365.0)
+                    });
+                }
+
+                policy.ChangeMonitors.Add(_cache.CreateCacheEntryChangeMonitor(new[] { cacheKey.Area }));
+            }
+
+            ReleaseInvalidation(cacheKey);
             _cache.Set(cacheKey.FullCacheKey, value, policy, null);
         }
 
