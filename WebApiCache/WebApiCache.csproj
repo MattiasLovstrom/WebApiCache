@@ -56,14 +56,15 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CacheKey.cs" />
+    <Compile Include="ETagStore.cs" />
     <Compile Include="HttpRequestMessageWrapper.cs" />
     <Compile Include="HttpResponseMessageWrapper.cs" />
     <Compile Include="ICacheVersion.cs" />
     <Compile Include="MessageWrapperBase.cs" />
-    <Compile Include="OutputCacheHandler.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="CacheAttribute.cs" />
-    <Compile Include="WebApiCacheManager.cs" />
+    <Compile Include="SyncronizedCacheManager.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

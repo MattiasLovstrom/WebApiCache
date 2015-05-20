@@ -14,8 +14,6 @@ namespace WebApiCache
     public class CacheAttribute : ActionFilterAttribute
     {
         private bool _isInitialized;
-        //TODO Should utalize the cache
-        private static IDictionary<string, EntityTagHeaderValue> ETagStore = new Dictionary<string, EntityTagHeaderValue>();
         protected IDictionary<string, Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper>> RequestRules { get; set; }
         protected IDictionary<string, Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper>> ResponseRules { get; set; }
 
@@ -56,7 +54,7 @@ namespace WebApiCache
             {
                 DecalringType = actionContext.ControllerContext.ControllerDescriptor.ControllerType;
             }
-            
+
             RequestRules = new Dictionary<string, Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper>>();
             ResponseRules = new Dictionary<string, Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper>>();
 
@@ -77,7 +75,7 @@ namespace WebApiCache
                 RequestRules.Add("AppendParamCacheKey", AppendParamCacheKey());
                 ResponseRules.Add("AppendParamCacheKey", AppendParamCacheKeyForResponse());
             }
-            
+
             if (!Update)
             {
                 RequestRules.Add("IfNoneMatch", IfNoneMatch());
@@ -104,26 +102,23 @@ namespace WebApiCache
             ResponseRules.Add("SetPublicCacheHeaders", SetPublicCacheHeaders());
         }
 
-        protected string GetVaryByParamCacheKey(Uri uri, List<string> _varyByParam)
+        protected void AppendVaryByParamCacheKey(CacheKey currentCacheKey, Uri uri, List<string> _varyByParam)
         {
-            var customCacheKey = new StringBuilder();
             var parameters = uri.ParseQueryString();
             foreach (var param in _varyByParam)
             {
                 if (parameters[param] != null)
                 {
-                    customCacheKey.AppendFormat("{0}={1}", param, parameters[param]);
+                    currentCacheKey.Append(String.Format("{0}={1}", param, parameters[param]));
                 }
             }
-
-            return (customCacheKey.ToString());
         }
 
         private Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper> AppendParamCacheKeyForResponse()
         {
             return delegate(HttpResponseMessageWrapper response)
             {
-                response.CurrentCacheKey = response.CurrentCacheKey + GetVaryByParamCacheKey(response.Response.RequestMessage.RequestUri, _varyByParam);
+                AppendVaryByParamCacheKey(response.CurrentCacheKey, response.Response.RequestMessage.RequestUri, _varyByParam);
                 return response;
             };
         }
@@ -132,15 +127,15 @@ namespace WebApiCache
         {
             return delegate(HttpRequestMessageWrapper request)
             {
-                request.CurrentCacheKey = request.CurrentCacheKey + GetVaryByParamCacheKey(request.Request.RequestUri, _varyByParam);
+                AppendVaryByParamCacheKey(request.CurrentCacheKey, request.Request.RequestUri, _varyByParam);
                 return null;
             };
         }
 
 
-        private string GetCacheKey()
+        private CacheKey GetCacheKey()
         {
-            return "WebAPiCache" + DecalringType.FullName;
+            return new CacheKey(DecalringType);
         }
 
         private Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper> AddCacheKey()
@@ -165,16 +160,16 @@ namespace WebApiCache
         {
             return delegate(HttpRequestMessageWrapper request)
             {
-                request.CurrentCacheKey = request.CurrentCacheKey + request.Request.RequestUri.AbsolutePath;
+                request.CurrentCacheKey.Append(request.Request.RequestUri.AbsolutePath);
                 return null;
             };
         }
-     
+
         private Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper> AppendUserCacheKeyForResponse()
         {
             return delegate(HttpResponseMessageWrapper response)
             {
-                response.CurrentCacheKey = response.CurrentCacheKey + Thread.CurrentPrincipal.Identity.Name;
+                response.CurrentCacheKey.Append(Thread.CurrentPrincipal.Identity.Name);
                 return response;
             };
         }
@@ -183,8 +178,8 @@ namespace WebApiCache
         {
             return delegate(HttpRequestMessageWrapper request)
             {
-                //TOSO Fix this
-                request.CurrentCacheKey = request.CurrentCacheKey + Thread.CurrentPrincipal.Identity.Name;
+                //TODO Fix this
+                request.CurrentCacheKey.Append(Thread.CurrentPrincipal.Identity.Name);
                 return null;
             };
         }
@@ -193,7 +188,7 @@ namespace WebApiCache
         {
             return delegate(HttpResponseMessageWrapper response)
             {
-                response.CurrentCacheKey = response.CurrentCacheKey + response.Response.RequestMessage.RequestUri.AbsolutePath;
+                response.CurrentCacheKey.Append(response.Response.RequestMessage.RequestUri.AbsolutePath);
                 return response;
             };
         }
@@ -202,36 +197,28 @@ namespace WebApiCache
         {
             return delegate(HttpResponseMessageWrapper response)
             {
-                if (!ETagStore.ContainsKey(response.CurrentCacheKey))
+                if (response != null && response.Response != null && response.Response.Headers != null)
                 {
-                    ETagStore[response.CurrentCacheKey] = CreateNewVersion();
+                    response.Response.Headers.ETag = ETagStore.GetOrCreateETag(response.CurrentCacheKey);
                 }
-                
-                response.Response.Headers.ETag = ETagStore[response.CurrentCacheKey];
                 return response;
             };
-        }
-
-        
-        private static EntityTagHeaderValue CreateNewVersion()
-        {
-            Thread.Sleep(1);
-            return new EntityTagHeaderValue(string.Format("\"{0}\"", DateTime.Now.Ticks));
         }
 
         private Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper> IfNoneMatch()
         {
             return delegate(HttpRequestMessageWrapper request)
             {
-                if ((request.Request.Method == HttpMethod.Get)
-                    && ETagStore.ContainsKey(request.CurrentCacheKey)
-                    && request.Request.Headers.IfNoneMatch.Contains(ETagStore[request.CurrentCacheKey]))
+                if (request.Request.Method == HttpMethod.Get)
                 {
-                    return new HttpResponseMessageWrapper(
-                        request.Request.CreateResponse(HttpStatusCode.NotModified),
-                        request.Request.RequestUri,
-                        DecalringType,
-                        _varyByParam);
+                    if (request.Request.Headers.IfNoneMatch.Contains(ETagStore.GetOrCreateETag(request.CurrentCacheKey)))
+                    {
+                        return new HttpResponseMessageWrapper(
+                            request.Request.CreateResponse(HttpStatusCode.NotModified),
+                            request.Request.RequestUri,
+                            DecalringType,
+                            _varyByParam);
+                    }
                 }
                 return null;
             };
@@ -241,21 +228,17 @@ namespace WebApiCache
         {
             return delegate(HttpResponseMessageWrapper response)
             {
-                InvalidateETag(response.CurrentCacheKey);
+                ETagStore.Invalidate(response.CurrentCacheKey);
                 return response;
             };
         }
 
-        public static void InvalidateETag(string cacheKey)
-        {
-            ETagStore[cacheKey] = CreateNewVersion();
-        }
 
         private Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper> InvalidateOutputCache()
         {
             return delegate(HttpRequestMessageWrapper request)
             {
-                OutputCacheHandler.Invalidate(request.CurrentCacheKey);
+                SynchronizedCacheManager.Instance.Invalidate(request.CurrentCacheKey);
                 return null;
             };
         }
@@ -281,21 +264,21 @@ namespace WebApiCache
         {
             return delegate(HttpResponseMessageWrapper response)
             {
-                OutputCacheHandler.Set(response.CurrentCacheKey, response);
+                SynchronizedCacheManager.Instance.Set(response.CurrentCacheKey, response);
                 return response;
             };
         }
 
         private Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper> TryDeliverFromOutputCache()
         {
-            return request => OutputCacheHandler.Get(request.CurrentCacheKey);
+            return request => SynchronizedCacheManager.Instance.Get(request.CurrentCacheKey) as HttpResponseMessageWrapper;
         }
 
         public bool CacheOnServer { get; set; }
 
         public Type DecalringType { get; set; }
 
-        
+
 
         public virtual Type Key { get; set; }
 
@@ -312,8 +295,6 @@ namespace WebApiCache
                 _varyByParam = new List<string>(value.Split(new[] { ',' }));
             }
         }
-
-        public bool VarByPath { get; set; }
 
         public bool VaryByPath { get; set; }
     }

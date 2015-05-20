@@ -60,7 +60,7 @@ namespace CacheWebApiTests
             Assert.IsFalse(browser2.ControllerExecuted);
         }
 
-        private static void ClearCache()
+        public static void ClearCache()
         {
             MemoryCache.Default.ToList().ForEach(a => MemoryCache.Default.Remove(a.Key));
         }

@@ -12,7 +12,7 @@ namespace WebApiCache
         private Uri _uri;
         private Type _decalringType;
         private List<string> _varyByParam;
-        private string _cacheKey;
+        private CacheKey _cacheKey;
         
         public MessageWrapperBase(Uri uri, Type decalringType, List<string> varyByParam)
         {
@@ -21,7 +21,7 @@ namespace WebApiCache
             this._varyByParam = varyByParam;
         }
 
-        public string CurrentCacheKey
+        public CacheKey CurrentCacheKey
         {
             get
             {
