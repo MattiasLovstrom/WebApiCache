@@ -243,8 +243,6 @@ namespace WebApiCache
             };
         }
 
-
-
         private Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper> SetPublicCacheHeaders()
         {
             return delegate(HttpResponseMessageWrapper response)
@@ -255,7 +253,10 @@ namespace WebApiCache
                     Public = true,
                     MustRevalidate = true
                 };
-                response.Response.Headers.CacheControl = value2;
+                if(response.Response != null && response.Response.Headers !=null)
+                { 
+                    response.Response.Headers.CacheControl = value2;
+                }
                 return response;
             };
         }
