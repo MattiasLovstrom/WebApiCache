@@ -3,12 +3,12 @@
   <metadata>
     <id>$id$</id>
     <version>$version$</version>
-    <title>WebAPI cache</title>
+    <title>WebAPI output cache</title>
     <authors>$author$</authors>
     <owners>Mattias Lovstrom</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>$description$</description>
-    <releaseNotes>First review of WebAPI cache.</releaseNotes>
+    <releaseNotes>First review of WebAPI output cache.</releaseNotes>
     <copyright>Copyright 2015</copyright>
     <tags>WebAPI cache outputcache etag</tags>
   </metadata>

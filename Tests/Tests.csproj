@@ -71,6 +71,7 @@
     <Compile Include="ETagTests.cs" />
     <Compile Include="ExternalInvalidatedController.cs" />
     <Compile Include="ServerCache.cs" />
+    <Compile Include="SynchronizedCacheManagerTests.cs" />
     <Compile Include="TestController.cs" />
     <Compile Include="TestController2.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

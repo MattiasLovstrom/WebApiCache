@@ -56,7 +56,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CacheEventArgs.cs" />
     <Compile Include="CacheKey.cs" />
+    <Compile Include="CacheOperation.cs" />
     <Compile Include="ETagStore.cs" />
     <Compile Include="HttpRequestMessageWrapper.cs" />
     <Compile Include="HttpResponseMessageWrapper.cs" />
