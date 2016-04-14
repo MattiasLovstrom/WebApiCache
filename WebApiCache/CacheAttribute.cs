@@ -14,6 +14,7 @@ namespace WebApiCache
     public class CacheAttribute : ActionFilterAttribute
     {
         private bool _isInitialized;
+        private object _initializeLock = new object();
         protected IDictionary<string, Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper>> RequestRules { get; set; }
         protected IDictionary<string, Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper>> ResponseRules { get; set; }
 
@@ -22,7 +23,13 @@ namespace WebApiCache
             actionContext.Response = null;
             if (!_isInitialized)
             {
+                lock (_initializeLock)
+                {
+                    if (!_isInitialized)
+                    {
                 Initialize(actionContext);
+                    }
+                }
             }
 
             var request = new HttpRequestMessageWrapper(actionContext.Request, DecalringType, _varyByParam);
