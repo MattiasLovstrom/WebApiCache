@@ -4,6 +4,9 @@ using System.Net.Http;
 
 namespace WebApiCache.Rules.RequestRules
 {
+    /// <summary>
+    /// Appends all request parameters and its value that are defined in varyByParam to the cache key. 
+    /// </summary>
     public class AppendParamCacheKey : IRequestRule
     {
         private string[] _varyByParams;
