@@ -14,7 +14,7 @@ namespace WebApiCache.Rules.RequestRules
             }
 
             return new HttpResponseMessageWrapper(
-                        request.Request.CreateResponse(HttpStatusCode.NotModified), request.Request.RequestUri);
+                        request.Request.CreateResponse(HttpStatusCode.NotModified));
         }
     }
 }

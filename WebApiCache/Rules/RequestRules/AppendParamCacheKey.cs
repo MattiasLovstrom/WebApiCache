@@ -1,30 +1,31 @@
 ﻿using System;
+using System.Globalization;
 using System.Net.Http;
 
 namespace WebApiCache.Rules.RequestRules
 {
     public class AppendParamCacheKey : IRequestRule
     {
-        private CacheAttribute _attribute;
-        public AppendParamCacheKey(CacheAttribute attribute)
+        private string[] _varyByParams;
+        public AppendParamCacheKey(string[] varyByParams)
         {
-            _attribute = attribute;
+            _varyByParams = varyByParams;
         }
 
         public HttpResponseMessageWrapper Invoke(HttpRequestMessageWrapper request)
         {
-            AppendVaryByParamCacheKey(request.CurrentCacheKey, request.Request.RequestUri, _attribute.GetVarByParams());
+            AppendVaryByParamsCacheKey(request.CurrentCacheKey, request.Request.RequestUri);
             return null;
         }
 
-        protected void AppendVaryByParamCacheKey(CacheKey currentCacheKey, Uri uri, string[] _varyByParam)
+        private void AppendVaryByParamsCacheKey(CacheKey currentCacheKey, Uri uri)
         {
             var parameters = uri.ParseQueryString();
-            foreach (var param in _varyByParam)
+            foreach (var param in _varyByParams)
             {
                 if (parameters[param] != null)
                 {
-                    currentCacheKey.Append(String.Format("{0}={1}", param, parameters[param]));
+                    currentCacheKey.Append(String.Format(CultureInfo.InvariantCulture, "{0}={1}", param, parameters[param]));
                 }
             }
         }

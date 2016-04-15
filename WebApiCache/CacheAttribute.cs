@@ -8,6 +8,9 @@ using WebApiCache.Rules.ResponseRules;
 
 namespace WebApiCache
 {
+    /// <summary>
+    /// Cache attribute should be applyed to Action metods to archive caching.  
+    /// </summary>
     public class CacheAttribute : ActionFilterAttribute
     {
         private List<IRequestRule> _requestRules;
@@ -37,9 +40,9 @@ namespace WebApiCache
         /// <param name="actionContext">The action context of the decorated action.</param>
         private void OnFirstRequestInitialize(HttpActionContext actionContext)
         {
-            if (DecalringType == null)
+            if (DeclaringType == null)
             {
-                DecalringType = actionContext.ControllerContext.ControllerDescriptor.ControllerType;
+                DeclaringType = actionContext.ControllerContext.ControllerDescriptor.ControllerType;
             }
 
             if (!Update)
@@ -98,7 +101,7 @@ namespace WebApiCache
 
         public override void OnActionExecuted(HttpActionExecutedContext actionExecutedContext)
         {
-            var response = new HttpResponseMessageWrapper(actionExecutedContext.Response, actionExecutedContext.Request.RequestUri);
+            var response = new HttpResponseMessageWrapper(actionExecutedContext.Response);
 
             foreach (IResponseRule func in _responseRules)
             {
@@ -111,7 +114,7 @@ namespace WebApiCache
         
         public bool CacheOnServer { get; set; }
 
-        public Type DecalringType { get; set; }
+        public Type DeclaringType { get; set; }
 
         public virtual Type Key { get; set; }
 
@@ -129,15 +132,15 @@ namespace WebApiCache
         }
 
         readonly char[] _paramSplitter = new[] { ',' };
-        public string VarByParam
+        public string VarByParams
         {
             set
             {
-                _varyByParams = value.Split(_paramSplitter);
-                if (_varyByParams.Length == 0) return;
+                var varyByParams = value.Split(_paramSplitter);
+                if (varyByParams.Length == 0) return;
 
-                _requestRules.Add(new AppendParamCacheKey(this));
-                _responseRules.Add(new AppendParamCacheKeyForResponse(this));
+                _requestRules.Add(new AppendParamCacheKey(varyByParams));
+                _responseRules.Add(new AppendParamsCacheKeyForResponse(varyByParams));
             }
         }
 
@@ -150,12 +153,6 @@ namespace WebApiCache
                 _requestRules.Add(new AppendPathCacheKey());
                 _responseRules.Add(new AppendPathCacheKeyForResponse());
             }
-        }
-
-        private string[] _varyByParams;
-        public string[] GetVarByParams()
-        {
-            return _varyByParams;
         }
     }
 }

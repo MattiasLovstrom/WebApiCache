@@ -1,10 +1,9 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Linq;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Runtime.Caching;
 using WebApiCache;
-using System.Linq;
 
 namespace CacheWebApiTests
 {
@@ -73,13 +72,13 @@ namespace CacheWebApiTests
             CacheAttribute readController = new CacheAttribute
             {
                 CacheOnServer = true,
-                VarByParam="id,lang"
+                VarByParams="id,lang"
             };
             CacheAttribute updateController = new CacheAttribute
             {
                 CacheOnServer = true,
                 Update = true,
-                VarByParam="id,lang"
+                VarByParams="id,lang"
             };
 
             Uri uri1 = new Uri("http://epiwiki.se/?id=1&lang=sv");

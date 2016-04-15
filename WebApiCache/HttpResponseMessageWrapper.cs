@@ -6,13 +6,10 @@ namespace WebApiCache
     public class HttpResponseMessageWrapper : MessageWrapperBase
     {
         private HttpResponseMessage _httpResponseMessage;
-        private Type _decalringType;
-        private string[] _varyByParam;
         
         public HttpResponseMessageWrapper(
-            HttpResponseMessage httpResponseMessage,
-            Uri uri)
-            : base(uri)
+            HttpResponseMessage httpResponseMessage)
+            : base()
         {
             _httpResponseMessage = httpResponseMessage;
         }
@@ -24,7 +21,5 @@ namespace WebApiCache
                 return _httpResponseMessage;
             } 
         }
-
-        public DateTime? Invalidated { get; set; }
     }
 }

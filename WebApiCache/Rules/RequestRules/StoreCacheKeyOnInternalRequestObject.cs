@@ -11,7 +11,7 @@
 
         public HttpResponseMessageWrapper Invoke(HttpRequestMessageWrapper request)
         {
-            request.CurrentCacheKey = new CacheKey(cacheAttribute.DecalringType);
+            request.CurrentCacheKey = new CacheKey(cacheAttribute.DeclaringType);
             return null;
         }
     }

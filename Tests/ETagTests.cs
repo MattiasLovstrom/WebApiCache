@@ -18,12 +18,12 @@ namespace CacheWebApiTests
 
             CacheAttribute readController = new CacheAttribute
             {
-                VarByParam="id,lang"
+                VarByParams="id,lang"
             };
             CacheAttribute updateController = new CacheAttribute
             {
                 Update = true,
-                VarByParam="id,lang"
+                VarByParams="id,lang"
             };
 
             Uri uri1 = new Uri("http://epiwiki.se/?id=1&lang=sv");
@@ -93,7 +93,7 @@ namespace CacheWebApiTests
             CacheAttribute filter = new CacheAttribute();
             CacheAttribute attribute2 = new CacheAttribute 
             {
-                DecalringType = typeof(TestController)
+                DeclaringType = typeof(TestController)
             };
             Browser browser = new Browser();
             browser.MakeRequest(filter);

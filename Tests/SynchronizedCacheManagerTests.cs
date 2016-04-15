@@ -51,7 +51,7 @@ namespace Tests
         {
             var cacheKey = new CacheKey("area", "key");
             object inData = new object();
-            SynchronizedCacheManager.MaximunUpdateTime = TimeSpan.FromMilliseconds(1);
+            SynchronizedCacheManager.MaximumUpdateTime = TimeSpan.FromMilliseconds(1);
             SynchronizedCacheManager.Instance.Set(cacheKey, inData);
             SynchronizedCacheManager.Instance.Invalidate(cacheKey);
             Thread.Sleep(1);
@@ -75,7 +75,5 @@ namespace Tests
             Assert.AreEqual(inData1, outData1);
             Assert.AreEqual(inData2, outData2);
         }
-
-
     }
 }

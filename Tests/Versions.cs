@@ -1,6 +1,5 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Net;
 using WebApiCache;
 
 namespace CacheWebApiTests
@@ -12,7 +11,7 @@ namespace CacheWebApiTests
         public void ETagInvalidateArea()
         {
             CacheAttribute filter = new CacheAttribute {
-                DecalringType = typeof(ExternalInvalidatedController),
+                DeclaringType = typeof(ExternalInvalidatedController),
                 VaryByPath = true
             };
             var url = new Uri("http://epiwiki.se/test");
@@ -31,7 +30,7 @@ namespace CacheWebApiTests
         {
             CacheAttribute filter = new CacheAttribute
             {
-                DecalringType = typeof(ExternalInvalidatedController),
+                DeclaringType = typeof(ExternalInvalidatedController),
                 VaryByPath = true,
                 CacheOnServer = true
             };

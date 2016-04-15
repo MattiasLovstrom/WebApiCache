@@ -10,7 +10,7 @@
 
         public HttpResponseMessageWrapper Invoke(HttpResponseMessageWrapper response)
         {
-            response.CurrentCacheKey = new CacheKey(attribute.DecalringType);
+            response.CurrentCacheKey = new CacheKey(attribute.DeclaringType);
             return response;
         }
     }

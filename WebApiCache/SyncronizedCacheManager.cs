@@ -7,7 +7,7 @@ namespace WebApiCache
 {
     public class SynchronizedCacheManager
     {
-        public static TimeSpan MaximunUpdateTime = TimeSpan.FromMinutes(10.0);
+        public static TimeSpan MaximumUpdateTime = TimeSpan.FromMinutes(10.0);
 
         public static SynchronizedCacheManager Instance { get; set; }
         private MemoryCache _cache = MemoryCache.Default;
@@ -21,36 +21,51 @@ namespace WebApiCache
             Instance = new SynchronizedCacheManager();
         }
 
+        private bool IsInvaliated(CacheKey key)
+        {
+            return _invalidItems.ContainsKey(key.Area);
+        }
+
+        private bool RemoveOldInvalidations(CacheKey key)
+        {
+            if (key.IsArea)
+            {
+                var invalidatedArea = _invalidItems[key.Area] as DateTime?;
+                if (invalidatedArea != null
+                    && invalidatedArea.Value.Add(MaximumUpdateTime) < DateTime.UtcNow)
+                {
+                    _invalidItems.Remove(key.Area);
+                    Remove(key);
+                    return true;
+                }
+            }
+            else
+            {
+                var invalidatedItemCollection = _invalidItems[key.Area] as ConcurrentDictionary<string, DateTime>;
+                if (invalidatedItemCollection != null
+                    && invalidatedItemCollection.ContainsKey(key.Key)
+                    && invalidatedItemCollection[key.Key].Add(MaximumUpdateTime) < DateTime.UtcNow)
+                {
+                    DateTime tmp;
+                    invalidatedItemCollection.TryRemove(key.Key, out tmp);
+                    if (invalidatedItemCollection.Count == 0)
+                    {
+                        _invalidItems[key.Area] = null;
+                    }
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public virtual object Get(CacheKey key)
         {
-            if (_invalidItems.ContainsKey(key.Area))
+            if (IsInvaliated(key))
             {
-                if (key.IsArea)
+                if (RemoveOldInvalidations(key))
                 {
-                    var invalidatedArea = _invalidItems[key.Area] as DateTime?;
-                    if (invalidatedArea != null
-                        && invalidatedArea.Value.Add(MaximunUpdateTime) < DateTime.UtcNow)
-                    {
-                        _invalidItems.Remove(key.Area);
-                        Remove(key);
-                        return null;
-                    }
-                }
-                else
-                {
-                    var invalidatedItemCollection = _invalidItems[key.Area] as ConcurrentDictionary<string, DateTime>;
-                    if (invalidatedItemCollection != null
-                        && invalidatedItemCollection.ContainsKey(key.Key)
-                        && invalidatedItemCollection[key.Key].Add(MaximunUpdateTime) < DateTime.UtcNow)
-                    {
-                        DateTime tmp;
-                        invalidatedItemCollection.TryRemove(key.Key, out tmp);
-                        if (invalidatedItemCollection.Count == 0)
-                        {
-                            _invalidItems[key.Area] = null;
-                        }
-                        return null;
-                    }
+                    return null;
                 }
             }
 

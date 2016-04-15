@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Globalization;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace WebApiCache
 {
@@ -15,9 +13,9 @@ namespace WebApiCache
             _key = new StringBuilder(key);
         }
 
-        public CacheKey(Type DecalringType)
+        public CacheKey(Type decalringType)
         {
-            Area = DecalringType.FullName;
+            Area = decalringType.FullName;
         }
         public string Area { get; set;}
         public string Key 
@@ -46,7 +44,7 @@ namespace WebApiCache
 
         public string Serialize()
         {
-            return String.Format("{0}|{1}", Area, Key);  
+            return String.Format(CultureInfo.InvariantCulture, "{0}|{1}", Area, Key);  
         }
 
         static public CacheKey Deserialize(string serialized)
