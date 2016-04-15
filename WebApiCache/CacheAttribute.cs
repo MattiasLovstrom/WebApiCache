@@ -1,22 +1,73 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading;
 using System.Web.Http.Controllers;
 using System.Web.Http.Filters;
+using WebApiCache.Rules;
+using WebApiCache.Rules.RequestRules;
+using WebApiCache.Rules.ResponseRules;
 
 namespace WebApiCache
 {
     public class CacheAttribute : ActionFilterAttribute
     {
+        private List<IRequestRule> _requestRules;
+        private List<IResponseRule> _responseRules;
         private bool _isInitialized;
         private object _initializeLock = new object();
-        protected IDictionary<string, Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper>> RequestRules { get; set; }
-        protected IDictionary<string, Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper>> ResponseRules { get; set; }
+        
+        public CacheAttribute()
+        {
+            _requestRules = new List<IRequestRule>();
+            _responseRules = new List<IResponseRule>();
+            PreInitialize();
+        }
+
+        /// <summary>
+        /// Initialize this attribute when the object is created, before the properties are added..
+        /// </summary>
+        private void PreInitialize()
+        {
+            _requestRules.Add(new StoreCacheKeyOnInternalRequestObject(this));
+            _responseRules.Add(new StoreCacheKeyonInternalResponseObject(this));
+        }
+
+        /// <summary>
+        /// Initialize the attribute with a action context, this happens on the first request accessing the decorated action methos.
+        /// </summary>
+        /// <param name="actionContext">The action context of the decorated action.</param>
+        private void OnFirstRequestInitialize(HttpActionContext actionContext)
+        {
+            if (DecalringType == null)
+            {
+                DecalringType = actionContext.ControllerContext.ControllerDescriptor.ControllerType;
+            }
+
+            if (!Update)
+            {
+                _requestRules.Add(new IfNoneMatch());
+                if (CacheOnServer)
+                {
+                    _requestRules.Add(new TryDeliverFromOutputCache());
+                }
+            }
+            else
+            //Updates
+            {
+                if (CacheOnServer)
+                {
+                    _requestRules.Add(new InvalidateOutputCache());
+                }
+                _responseRules.Add(new InvalidateETag());
+            }
+
+            _responseRules.Add(new ApplyETag());
+            if (CacheOnServer)
+            {
+                _responseRules.Add(new StoreInOutputCache());
+            }
+            _responseRules.Add(new SetPublicCacheHeaders());
+        }
+
 
         public override void OnActionExecuting(HttpActionContext actionContext)
         {
@@ -27,15 +78,17 @@ namespace WebApiCache
                 {
                     if (!_isInitialized)
                     {
-                Initialize(actionContext);
+                        _isInitialized = true;
+                        OnFirstRequestInitialize(actionContext);
                     }
                 }
             }
 
-            var request = new HttpRequestMessageWrapper(actionContext.Request, DecalringType, _varyByParam);
-            foreach (Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper> func in RequestRules.Values)
+            var request = new HttpRequestMessageWrapper(actionContext.Request);
+
+            foreach (IRequestRule rule in _requestRules)
             {
-                HttpResponseMessageWrapper message = func(request);
+                HttpResponseMessageWrapper message = rule.Invoke(request);
                 if (message != null)
                 {
                     actionContext.Response = message.Response;
@@ -45,266 +98,65 @@ namespace WebApiCache
 
         public override void OnActionExecuted(HttpActionExecutedContext actionExecutedContext)
         {
-            var response = new HttpResponseMessageWrapper(actionExecutedContext.Response, actionExecutedContext.Request.RequestUri, DecalringType, _varyByParam);
+            var response = new HttpResponseMessageWrapper(actionExecutedContext.Response, actionExecutedContext.Request.RequestUri);
 
-            foreach (Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper> func in ResponseRules.Values)
+            foreach (IResponseRule func in _responseRules)
             {
-                func(response);
+                func.Invoke(response);
             }
+
             base.OnActionExecuted(actionExecutedContext);
         }
 
-        private void Initialize(HttpActionContext actionContext)
-        {
-            _isInitialized = true;
-            if (DecalringType == null)
-            {
-                DecalringType = actionContext.ControllerContext.ControllerDescriptor.ControllerType;
-            }
-
-            RequestRules = new Dictionary<string, Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper>>();
-            ResponseRules = new Dictionary<string, Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper>>();
-
-            RequestRules.Add("AddCacheKey", AddCacheKey());
-            ResponseRules.Add("AddCacheKey", AddCacheKeyForResponse());
-            if (VaryByUser)
-            {
-                RequestRules.Add("AppendUserCacheKey", AppendUserCacheKey());
-                ResponseRules.Add("AppendUserCacheKey", AppendUserCacheKeyForResponse());
-            }
-            if (VaryByPath)
-            {
-                RequestRules.Add("AppendPathCacheKey", AppendPathCacheKey());
-                ResponseRules.Add("AppendPathCacheKey", AppendPathCacheKeyForResponse());
-            }
-            if (_varyByParam != null)
-            {
-                RequestRules.Add("AppendParamCacheKey", AppendParamCacheKey());
-                ResponseRules.Add("AppendParamCacheKey", AppendParamCacheKeyForResponse());
-            }
-
-            if (!Update)
-            {
-                RequestRules.Add("IfNoneMatch", IfNoneMatch());
-                if (CacheOnServer)
-                {
-                    RequestRules.Add("TryDeliverFromOutputCache", TryDeliverFromOutputCache());
-                }
-            }
-            else
-            //Updates
-            {
-                if (CacheOnServer)
-                {
-                    RequestRules.Add("InvalidateOutputCache", InvalidateOutputCache());
-                }
-                ResponseRules.Add("Invalidate", InvalidateETag());
-            }
-
-            ResponseRules.Add("ApplyETag", ApplyETag());
-            if (CacheOnServer)
-            {
-                ResponseRules.Add("StoreInOutputCache", StoreInOutputCache());
-            }
-            ResponseRules.Add("SetPublicCacheHeaders", SetPublicCacheHeaders());
-        }
-
-        protected void AppendVaryByParamCacheKey(CacheKey currentCacheKey, Uri uri, List<string> _varyByParam)
-        {
-            var parameters = uri.ParseQueryString();
-            foreach (var param in _varyByParam)
-            {
-                if (parameters[param] != null)
-                {
-                    currentCacheKey.Append(String.Format("{0}={1}", param, parameters[param]));
-                }
-            }
-        }
-
-        private Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper> AppendParamCacheKeyForResponse()
-        {
-            return delegate(HttpResponseMessageWrapper response)
-            {
-                AppendVaryByParamCacheKey(response.CurrentCacheKey, response.Response.RequestMessage.RequestUri, _varyByParam);
-                return response;
-            };
-        }
-
-        private Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper> AppendParamCacheKey()
-        {
-            return delegate(HttpRequestMessageWrapper request)
-            {
-                AppendVaryByParamCacheKey(request.CurrentCacheKey, request.Request.RequestUri, _varyByParam);
-                return null;
-            };
-        }
-
-
-        private CacheKey GetCacheKey()
-        {
-            return new CacheKey(DecalringType);
-        }
-
-        private Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper> AddCacheKey()
-        {
-            return delegate(HttpRequestMessageWrapper request)
-            {
-                request.CurrentCacheKey = GetCacheKey();
-                return null;
-            };
-        }
-
-        private Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper> AddCacheKeyForResponse()
-        {
-            return delegate(HttpResponseMessageWrapper response)
-            {
-                response.CurrentCacheKey = GetCacheKey();
-                return response;
-            };
-        }
-
-        private Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper> AppendPathCacheKey()
-        {
-            return delegate(HttpRequestMessageWrapper request)
-            {
-                request.CurrentCacheKey.Append(request.Request.RequestUri.AbsolutePath);
-                return null;
-            };
-        }
-
-        private Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper> AppendUserCacheKeyForResponse()
-        {
-            return delegate(HttpResponseMessageWrapper response)
-            {
-                response.CurrentCacheKey.Append(Thread.CurrentPrincipal.Identity.Name);
-                return response;
-            };
-        }
-
-        private Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper> AppendUserCacheKey()
-        {
-            return delegate(HttpRequestMessageWrapper request)
-            {
-                //TODO Fix this
-                request.CurrentCacheKey.Append(Thread.CurrentPrincipal.Identity.Name);
-                return null;
-            };
-        }
-
-        private Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper> AppendPathCacheKeyForResponse()
-        {
-            return delegate(HttpResponseMessageWrapper response)
-            {
-                response.CurrentCacheKey.Append(response.Response.RequestMessage.RequestUri.AbsolutePath);
-                return response;
-            };
-        }
-
-        private Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper> ApplyETag()
-        {
-            return delegate(HttpResponseMessageWrapper response)
-            {
-                if (response != null && response.Response != null && response.Response.Headers != null)
-                {
-                    response.Response.Headers.ETag = ETagStore.GetOrCreateETag(response.CurrentCacheKey);
-                }
-                return response;
-            };
-        }
-
-        private Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper> IfNoneMatch()
-        {
-            return delegate(HttpRequestMessageWrapper request)
-            {
-                if (request.Request.Method == HttpMethod.Get)
-                {
-                    if (request.Request.Headers.IfNoneMatch.Contains(ETagStore.GetOrCreateETag(request.CurrentCacheKey)))
-                    {
-                        return new HttpResponseMessageWrapper(
-                            request.Request.CreateResponse(HttpStatusCode.NotModified),
-                            request.Request.RequestUri,
-                            DecalringType,
-                            _varyByParam);
-                    }
-                }
-                return null;
-            };
-        }
-
-        private Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper> InvalidateETag()
-        {
-            return delegate(HttpResponseMessageWrapper response)
-            {
-                ETagStore.Invalidate(response.CurrentCacheKey);
-                return response;
-            };
-        }
-
-
-        private Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper> InvalidateOutputCache()
-        {
-            return delegate(HttpRequestMessageWrapper request)
-            {
-                SynchronizedCacheManager.Instance.Invalidate(request.CurrentCacheKey);
-                return null;
-            };
-        }
-
-        private Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper> SetPublicCacheHeaders()
-        {
-            return delegate(HttpResponseMessageWrapper response)
-            {
-                CacheControlHeaderValue value2 = new CacheControlHeaderValue
-                {
-                    MaxAge = new TimeSpan?(TimeSpan.Zero),
-                    Public = true,
-                    MustRevalidate = true
-                };
-                if(response.Response != null && response.Response.Headers !=null)
-                { 
-                    response.Response.Headers.CacheControl = value2;
-                }
-                return response;
-            };
-        }
-
-        private Func<HttpResponseMessageWrapper, HttpResponseMessageWrapper> StoreInOutputCache()
-        {
-            return delegate(HttpResponseMessageWrapper response)
-            {
-                SynchronizedCacheManager.Instance.Set(response.CurrentCacheKey, response);
-                return response;
-            };
-        }
-
-        private Func<HttpRequestMessageWrapper, HttpResponseMessageWrapper> TryDeliverFromOutputCache()
-        {
-            return request => SynchronizedCacheManager.Instance.Get(request.CurrentCacheKey) as HttpResponseMessageWrapper;
-        }
-
+        
         public bool CacheOnServer { get; set; }
 
         public Type DecalringType { get; set; }
 
-
-
         public virtual Type Key { get; set; }
-
 
         public virtual bool Update { get; set; }
 
-        public bool VaryByUser { get; set; }
+        public bool VaryByUser
+        {
+            set
+            {
+                if (!value) return;
 
-        private List<String> _varyByParam;
+                _requestRules.Add(new AppendUserCacheKey());
+                _responseRules.Add(new AppendUserCacheKeyForResponse());
+            }
+        }
+
+        readonly char[] _paramSplitter = new[] { ',' };
         public string VarByParam
         {
             set
             {
-                _varyByParam = new List<string>(value.Split(new[] { ',' }));
+                _varyByParams = value.Split(_paramSplitter);
+                if (_varyByParams.Length == 0) return;
+
+                _requestRules.Add(new AppendParamCacheKey(this));
+                _responseRules.Add(new AppendParamCacheKeyForResponse(this));
             }
         }
 
-        public bool VaryByPath { get; set; }
+        public bool VaryByPath
+        {
+            set
+            {
+                if (!value) return;
+
+                _requestRules.Add(new AppendPathCacheKey());
+                _responseRules.Add(new AppendPathCacheKeyForResponse());
+            }
+        }
+
+        private string[] _varyByParams;
+        public string[] GetVarByParams()
+        {
+            return _varyByParams;
+        }
     }
 }
 

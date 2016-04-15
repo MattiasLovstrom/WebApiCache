@@ -12,10 +12,8 @@ namespace WebApiCache
         private HttpRequestMessage _httpRequestMessage;
 
         public HttpRequestMessageWrapper(
-            HttpRequestMessage httpRequestMessage,
-            Type DecalringType,
-            List<string> varyByParam)
-            : base(httpRequestMessage.RequestUri, DecalringType, varyByParam)
+            HttpRequestMessage httpRequestMessage)
+            : base(httpRequestMessage.RequestUri)
         {
             _httpRequestMessage = httpRequestMessage;
         }
