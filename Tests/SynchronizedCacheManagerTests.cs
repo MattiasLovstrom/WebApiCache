@@ -32,22 +32,21 @@ namespace Tests
         }
 
         [TestMethod]
-        [Ignore]
         public void CacheInvalidate()
         {
             var cacheKey = new CacheKey("area", "key");
             object inData = new object();
             SynchronizedCacheManager.Instance.Set(cacheKey, inData);
+            // Invalidate only indicate this cache object is invalid
             SynchronizedCacheManager.Instance.Invalidate(cacheKey);
+            // the same object should be returned
             object outData = SynchronizedCacheManager.Instance.Get(cacheKey);
 
             Assert.AreEqual(inData, outData);
-            throw new NotImplementedException();
         }
 
 
         [TestMethod]
-        [Ignore]
         public void CacheInvalidateTimeOut()
         {
             var cacheKey = new CacheKey("area", "key");
@@ -59,11 +58,9 @@ namespace Tests
             object outData = SynchronizedCacheManager.Instance.Get(cacheKey);
 
             Assert.AreEqual(null, outData);
-            throw new NotImplementedException();
         }
 
         [TestMethod]
-        [Ignore]
         public void CacheInvalidateWithSet()
         {
             var cacheKey = new CacheKey("area", "key");
@@ -77,7 +74,6 @@ namespace Tests
 
             Assert.AreEqual(inData1, outData1);
             Assert.AreEqual(inData2, outData2);
-            throw new NotImplementedException();
         }
 
 
